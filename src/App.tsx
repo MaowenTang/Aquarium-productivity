@@ -8,7 +8,9 @@ import { Settings } from './components/Settings';
 import { Navigation, NavigationScreen } from './components/Navigation';
 import { TaskInput } from './components/TaskInput';
 import { OceanWaves } from './components/OceanWaves';
+import { SyncStatusIndicator } from './components/SyncStatusIndicator';
 import { Task } from './types/Task';
+import { DataManager } from './utils/DataManager';
 import { LocalDataManager } from './utils/LocalDataManager';
 
 export default function App() {
@@ -16,45 +18,55 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [currentScreen, setCurrentScreen] = useState<NavigationScreen>('dashboard');
   const [isLoading, setIsLoading] = useState(true);
+  const [dataManager] = useState(() => DataManager.getInstance());
 
-  // Load data locally only
+  // Load data using DataManager
   useEffect(() => {
     loadData();
   }, []);
 
-  // Save data when it changes - local only
-  useEffect(() => {
-    if (user && tasks.length >= 0) {
-      LocalDataManager.saveTasks(tasks);
-    }
-  }, [tasks]);
-
-  const loadData = () => {
+  const loadData = async () => {
     try {
       // Run data migration first to ensure compatibility
       LocalDataManager.migrateDataFormat();
       
       const savedUser = LocalDataManager.loadUser();
-      const savedTasks = LocalDataManager.loadTasks();
       
       if (savedUser) {
         setUser(savedUser);
-        setTasks(savedTasks);
+        
+        // Initialize DataManager with user
+        await dataManager.initialize(savedUser);
+        
+        // Load tasks using DataManager
+        const loadedTasks = await dataManager.getTasks();
+        setTasks(loadedTasks);
+        
+        console.log('[Data] Data loaded successfully');
       }
-      
-      console.log('[Privacy] Data loaded from local storage only');
     } catch (error) {
-      console.error('[Privacy] Error loading local data:', error);
+      console.error('[Data] Error loading data:', error);
+      // Fallback to local data
+      const savedTasks = LocalDataManager.loadTasks();
+      setTasks(savedTasks);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLogin = (email: string) => {
+  const handleLogin = async (email: string) => {
     setUser(email);
     LocalDataManager.saveUser(email);
+    
+    // Initialize DataManager with user
+    await dataManager.initialize(email);
+    
+    // Load tasks
+    const loadedTasks = await dataManager.getTasks();
+    setTasks(loadedTasks);
+    
     setCurrentScreen('dashboard');
-    console.log('[Privacy] User session created locally');
+    console.log('[Data] User session created and data loaded');
   };
 
   const handleLogout = () => {
@@ -62,7 +74,7 @@ export default function App() {
     setTasks([]);
     setCurrentScreen('dashboard');
     LocalDataManager.removeUser();
-    console.log('[Privacy] User session ended');
+    console.log('[Data] User session ended');
   };
 
   const handleClearData = () => {
@@ -94,30 +106,59 @@ export default function App() {
     }
   };
 
-  const handleAddTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: Date.now().toString(),
-      completed: false,
-      createdAt: new Date()
-    };
-    setTasks(prev => [...prev, newTask]);
+  const handleAddTask = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
+    try {
+      const newTask = await dataManager.addTask(taskData);
+      setTasks(prev => [...prev, newTask]);
+    } catch (error) {
+      console.error('Failed to add task:', error);
+      // Fallback to local only
+      const newTask: Task = {
+        ...taskData,
+        id: Date.now().toString(),
+        completed: false,
+        createdAt: new Date()
+      };
+      setTasks(prev => [...prev, newTask]);
+    }
   };
 
-  const handleCompleteTask = (id: string) => {
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === id ? { ...task, completed: true } : task
-      )
-    );
+  const handleCompleteTask = async (id: string) => {
+    try {
+      await dataManager.updateTask(id, { completed: true });
+      setTasks(prev => 
+        prev.map(task => 
+          task.id === id ? { ...task, completed: true } : task
+        )
+      );
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      // Still update UI for immediate feedback
+      setTasks(prev => 
+        prev.map(task => 
+          task.id === id ? { ...task, completed: true } : task
+        )
+      );
+    }
   };
 
-  const handleChangePriority = (id: string, priority: number) => {
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === id ? { ...task, priority } : task
-      )
-    );
+  const handleChangePriority = async (id: string, priority: number) => {
+    try {
+      await dataManager.updateTask(id, { priority });
+      setTasks(prev => 
+        prev.map(task => 
+          task.id === id ? { ...task, priority } : task
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update task priority:', error);
+      // Still update UI for immediate feedback
+      setTasks(prev => 
+        prev.map(task => 
+          task.id === id ? { ...task, priority } : task
+        )
+      );
+    }
   };
 
   const activeTasks = tasks.filter(task => !task.completed);
@@ -193,6 +234,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 via-blue-200 to-blue-300 relative">
       <OceanWaves />
+      
+      {/* Sync Status Indicator */}
+      {user && <SyncStatusIndicator position="top-right" />}
       
       <Navigation
         currentScreen={currentScreen}

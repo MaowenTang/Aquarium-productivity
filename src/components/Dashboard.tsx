@@ -291,7 +291,24 @@ export function Dashboard({
           transition={{ delay: 0.8 }}
           className="flex justify-center"
         >
-          <WeatherDisplay />
+          <WeatherDisplay 
+            onActivitySelect={(activity) => {
+              if (activity.toLowerCase().includes('meditation')) {
+                setShowMeditation(true);
+              } else if (activity.toLowerCase().includes('focus') || activity.toLowerCase().includes('productivity')) {
+                // Could navigate to focus mode or create a focus task
+                onAddTask({
+                  title: `${activity} - Weather Inspired`,
+                  description: `Perfect weather for ${activity.toLowerCase()}`,
+                  priority: 2,
+                  deadline: new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
+                });
+              } else if (activity.toLowerCase().includes('planning') || activity.toLowerCase().includes('organize')) {
+                setShowPlanner(true);
+              }
+            }}
+            showRecommendations={true}
+          />
         </motion.div>
       )}
 
