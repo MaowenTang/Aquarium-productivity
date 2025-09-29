@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Cloud, CloudOff, Wifi, WifiOff, Database, Smartphone } from 'lucide-react';
-import { DataManager, SyncMode } from '../utils/DataManager';
+import { Cloud, CloudOff, Wifi, WifiOff, Database } from 'lucide-react';
+import { DataManager } from '../utils/DataManager';
 
 interface SyncStatus {
-  mode: SyncMode;
+  mode: 'cloud-sync';
   online: boolean;
   connected: boolean;
 }
@@ -19,9 +19,9 @@ export function SyncStatusIndicator({
   className = '' 
 }: SyncStatusIndicatorProps) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
-    mode: 'local-only',
+    mode: 'cloud-sync',
     online: navigator.onLine,
-    connected: false
+    connected: navigator.onLine
   });
   const [showDetails, setShowDetails] = useState(false);
 
@@ -69,10 +69,6 @@ export function SyncStatusIndicator({
   };
 
   const getStatusIcon = () => {
-    if (syncStatus.mode === 'local-only') {
-      return <Smartphone className="h-4 w-4" />;
-    }
-    
     if (!syncStatus.online) {
       return <WifiOff className="h-4 w-4" />;
     }
@@ -85,10 +81,6 @@ export function SyncStatusIndicator({
   };
 
   const getStatusColor = () => {
-    if (syncStatus.mode === 'local-only') {
-      return 'text-blue-600 bg-blue-100';
-    }
-    
     if (!syncStatus.online) {
       return 'text-orange-600 bg-orange-100';
     }
@@ -101,28 +93,19 @@ export function SyncStatusIndicator({
   };
 
   const getStatusText = () => {
-    if (syncStatus.mode === 'local-only') {
-      return 'Local Only';
-    }
-    
     if (!syncStatus.online) {
       return 'Offline';
     }
     
     if (syncStatus.connected) {
-      return 'Cloud Sync';
+      return 'Cloud Connected';
     }
     
-    return 'Sync Error';
+    return 'Connection Error';
   };
 
   const getSyncAnimation = () => {
-    if (syncStatus.mode === 'cloud-sync' && syncStatus.connected) {
-      return {
-        rotate: [0, 360],
-        scale: [1, 1.1, 1]
-      };
-    }
+    // No automatic animations for stable cloud connected state
     return {};
   };
 
@@ -142,35 +125,15 @@ export function SyncStatusIndicator({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           animate={getSyncAnimation()}
-          transition={{
-            rotate: { duration: 2, repeat: Infinity, ease: "linear" },
-            scale: { duration: 3, repeat: Infinity, ease: "easeInOut" }
-          }}
         >
-          <motion.div
-            animate={syncStatus.mode === 'cloud-sync' && syncStatus.connected ? {
-              rotate: [0, 180, 360]
-            } : {}}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
+          <div>
             {getStatusIcon()}
-          </motion.div>
+          </div>
           
           <span className="text-sm font-medium hidden sm:inline">
             {getStatusText()}
           </span>
-          
-          {/* Sync pulse animation */}
-          {syncStatus.mode === 'cloud-sync' && syncStatus.connected && (
-            <motion.div
-              className="absolute inset-0 rounded-full border-2 border-current opacity-30"
-              animate={{
-                scale: [1, 1.5, 1],
-                opacity: [0.3, 0, 0.3]
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-          )}
+
         </motion.div>
 
         {/* Details tooltip */}
@@ -196,17 +159,8 @@ export function SyncStatusIndicator({
                   <div className="flex items-center justify-between">
                     <span>Storage Mode:</span>
                     <div className="flex items-center gap-1">
-                      {syncStatus.mode === 'local-only' ? (
-                        <>
-                          <Database className="h-3 w-3" />
-                          <span>Local Only</span>
-                        </>
-                      ) : (
-                        <>
-                          <Cloud className="h-3 w-3" />
-                          <span>Cloud Sync</span>
-                        </>
-                      )}
+                      <Cloud className="h-3 w-3" />
+                      <span>Cloud Only</span>
                     </div>
                   </div>
                   
@@ -227,33 +181,29 @@ export function SyncStatusIndicator({
                     </div>
                   </div>
                   
-                  {syncStatus.mode === 'cloud-sync' && (
-                    <div className="flex items-center justify-between">
-                      <span>Database:</span>
-                      <div className="flex items-center gap-1">
-                        {syncStatus.connected ? (
-                          <>
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-green-600">Connected</span>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-2 h-2 bg-red-500 rounded-full" />
-                            <span className="text-red-600">Disconnected</span>
-                          </>
-                        )}
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <span>Database:</span>
+                    <div className="flex items-center gap-1">
+                      {syncStatus.connected ? (
+                        <>
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                          <span className="text-green-600">Connected</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-2 h-2 bg-red-500 rounded-full" />
+                          <span className="text-red-600">Disconnected</span>
+                        </>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
                 
                 <div className="pt-2 border-t border-white/20">
                   <p className="text-xs text-blue-600/80">
-                    {syncStatus.mode === 'local-only' 
-                      ? 'All data stored locally on your device'
-                      : syncStatus.connected
-                        ? 'Data synced with secure cloud storage'
-                        : 'Cloud sync unavailable - using local storage'
+                    {syncStatus.connected
+                      ? 'All data securely stored in the cloud'
+                      : 'Cloud storage unavailable - check connection'
                     }
                   </p>
                 </div>

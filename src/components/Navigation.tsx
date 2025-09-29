@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { 
   Home, 
   Calendar, 
@@ -8,9 +9,12 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Cloud,
+  Smartphone
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { DataManager } from '../utils/DataManager';
 
 export type NavigationScreen = 'dashboard' | 'planner' | 'focus' | 'meditation' | 'settings';
 
@@ -24,6 +28,21 @@ interface NavigationProps {
 
 export function Navigation({ currentScreen, onScreenChange, onLogout, user, tasksCount }: NavigationProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [syncMode, setSyncMode] = useState<'cloud-sync'>('cloud-sync');
+  
+  const dataManager = DataManager.getInstance();
+
+  useEffect(() => {
+    const updateSyncMode = () => {
+      const status = dataManager.getSyncStatus();
+      setSyncMode(status.mode);
+    };
+    
+    updateSyncMode();
+    const interval = setInterval(updateSyncMode, 5000);
+    
+    return () => clearInterval(interval);
+  }, [dataManager]);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home, color: 'text-blue-600' },
@@ -55,15 +74,11 @@ export function Navigation({ currentScreen, onScreenChange, onLogout, user, task
           rounded-2xl px-4 md:px-6 py-2 md:py-3 border border-white/20
         `}
       >
-        <motion.div
-          animate={isActive ? { 
-            rotateY: [0, 5, 0], 
-            rotateX: [0, -2, 0] 
-          } : {}}
+        <div
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         >
           <item.icon className={`h-4 w-4 md:h-5 md:w-5 ${isActive ? 'text-blue-600' : item.color}`} />
-        </motion.div>
+        </div>
         <span className="ml-2 hidden sm:inline">{item.label}</span>
         
         {isActive && (
@@ -92,11 +107,9 @@ export function Navigation({ currentScreen, onScreenChange, onLogout, user, task
             <motion.div 
               className="w-10 h-10 bubble-semi-transparent rounded-full flex items-center justify-center float-3d"
               animate={{ 
-                rotateY: [0, 360],
                 scale: [1, 1.05, 1]
               }}
               transition={{ 
-                rotateY: { duration: 8, repeat: Infinity, ease: "linear" },
                 scale: { duration: 3, repeat: Infinity, ease: "easeInOut" }
               }}
             >
@@ -127,6 +140,20 @@ export function Navigation({ currentScreen, onScreenChange, onLogout, user, task
             >
               {tasksCount} active tasks
             </motion.div>
+            
+            {/* Storage Mode Indicator */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="text-xs glass-morandi px-2 py-1 rounded-full float-3d"
+            >
+              <Badge 
+                variant="outline" 
+                className="border-white/40 text-blue-700 bg-blue-50/50"
+              >
+                <Cloud className="h-3 w-3 mr-1" />
+                Cloud
+              </Badge>
+            </motion.div>
             <motion.div
               whileHover={{ scale: 1.1, rotate: 5 }}
               whileTap={{ scale: 0.9 }}
@@ -153,7 +180,29 @@ export function Navigation({ currentScreen, onScreenChange, onLogout, user, task
             </div>
             <div>
               <h1 className="font-medium text-blue-800">Aquarium Serenity</h1>
-              <p className="text-xs text-blue-600">{tasksCount} tasks</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-blue-600">{tasksCount} tasks</p>
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs border-white/40 ${
+                    syncMode === 'local-only' 
+                      ? 'text-green-700 bg-green-50/50' 
+                      : 'text-blue-700 bg-blue-50/50'
+                  }`}
+                >
+                  {syncMode === 'local-only' ? (
+                    <>
+                      <Smartphone className="h-2 w-2 mr-1" />
+                      Local
+                    </>
+                  ) : (
+                    <>
+                      <Cloud className="h-2 w-2 mr-1" />
+                      Cloud
+                    </>
+                  )}
+                </Badge>
+              </div>
             </div>
           </div>
 

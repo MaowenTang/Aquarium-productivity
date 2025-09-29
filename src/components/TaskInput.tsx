@@ -49,18 +49,15 @@ export function TaskInput({ onAddTask }: TaskInputProps) {
           initial={{ scale: 0 }}
           animate={{ 
             scale: 1,
-            y: [0, -5, 0],
-            rotate: [0, 5, 0, -5, 0]
+            y: [0, -5, 0]
           }}
           transition={{
             scale: { duration: 0.3 },
-            y: { duration: 3, repeat: Infinity, ease: 'easeInOut' },
-            rotate: { duration: 6, repeat: Infinity, ease: 'easeInOut' }
+            y: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
           }}
           whileHover={{ 
             scale: 1.15, 
             y: -8,
-            rotate: 10,
             transition: { duration: 0.2 }
           }}
           whileTap={{ scale: 0.85 }}
@@ -73,7 +70,6 @@ export function TaskInput({ onAddTask }: TaskInputProps) {
           >
             <motion.div
               animate={{ 
-                rotate: [0, 180, 360],
                 scale: [1, 1.1, 1]
               }}
               transition={{ 
@@ -104,8 +100,7 @@ export function TaskInput({ onAddTask }: TaskInputProps) {
                 <motion.span 
                   className="text-2xl"
                   animate={{ 
-                    scale: [1, 1.2, 1],
-                    rotate: [0, 10, 0]
+                    scale: [1, 1.2, 1]
                   }}
                   transition={{ 
                     duration: 2, 

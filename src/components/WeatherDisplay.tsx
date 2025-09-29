@@ -33,13 +33,14 @@ export function WeatherDisplay({ onActivitySelect, showRecommendations = true }:
       try {
         const location = await WeatherService.getCurrentLocation();
         weatherData = await WeatherService.getCurrentWeather(location.lat, location.lon);
+        console.log('🌍 Weather loaded from your location');
       } catch (locationError) {
-        // Fallback to default city
-        console.warn('Location access denied, using default city:', locationError);
+        // Silently fallback to default city without logging the error as a warning
+        console.log('📍 Using default location for weather (location access not available)');
         try {
           weatherData = await WeatherService.getWeatherByCity('San Francisco');
         } catch (cityError) {
-          console.warn('City weather fetch failed, using default weather:', cityError);
+          console.log('🌊 Using default weather data (API not available)');
           weatherData = DEFAULT_WEATHER;
         }
       }
@@ -117,12 +118,13 @@ export function WeatherDisplay({ onActivitySelect, showRecommendations = true }:
 
   if (error && !weather) {
     return (
-      <Card className="glass-morandi border-red-200/30 float-3d">
+      <Card className="glass-morandi border-blue-200/30 float-3d">
         <CardContent className="p-6 text-center">
           <div className="space-y-3">
-            <div className="text-red-400">
+            <div className="text-blue-600">
               <Cloud className="h-8 w-8 mx-auto mb-2" />
-              <p className="text-sm">Weather temporarily unavailable</p>
+              <p className="font-medium">Weather Service Unavailable</p>
+              <p className="text-sm text-blue-600/80">Using default peaceful conditions</p>
             </div>
             <Button 
               variant="outline" 
@@ -187,6 +189,11 @@ export function WeatherDisplay({ onActivitySelect, showRecommendations = true }:
                 <div className="flex items-center gap-1 text-blue-600 text-sm mt-1">
                   <MapPin className="h-3 w-3" />
                   <span>{weather?.cityName}</span>
+                  {weather?.cityName === 'San Francisco' && (
+                    <span className="text-xs text-blue-500/70 ml-1 px-1.5 py-0.5 bg-blue-100/50 rounded-full">
+                      📍 Set your location in Settings
+                    </span>
+                  )}
                 </div>
               </div>
               

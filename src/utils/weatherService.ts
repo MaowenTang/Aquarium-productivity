@@ -88,8 +88,20 @@ export const WeatherService = {
   getCurrentLocation(): Promise<{ lat: number; lon: number }> {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Geolocation not supported'));
+        reject(new Error('Geolocation is not supported by this browser'));
         return;
+      }
+
+      // Check permissions first if available
+      if ('permissions' in navigator) {
+        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+          if (result.state === 'denied') {
+            reject(new Error('Geolocation access has been denied'));
+            return;
+          }
+        }).catch(() => {
+          // Permissions API not available, continue with geolocation attempt
+        });
       }
 
       navigator.geolocation.getCurrentPosition(
@@ -100,11 +112,29 @@ export const WeatherService = {
           });
         },
         (error) => {
-          reject(new Error(`Geolocation error: ${error.message}`));
+          let errorMessage = 'Unable to access location';
+          
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location access was denied by user settings or browser policy';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location information is unavailable';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out';
+              break;
+            default:
+              errorMessage = 'An unknown error occurred while retrieving location';
+              break;
+          }
+          
+          reject(new Error(errorMessage));
         },
         {
-          timeout: 10000,
-          enableHighAccuracy: true
+          timeout: 8000,
+          enableHighAccuracy: false, // Changed to false to be less restrictive
+          maximumAge: 300000 // 5 minutes cache
         }
       );
     });

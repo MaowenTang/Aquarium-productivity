@@ -4,38 +4,25 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Slider } from './ui/slider';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { LocalDataVault } from './LocalDataVault';
-import { PrivacyPanel } from './PrivacyPanel';
-import { SecuritySettings } from './SecuritySettings';
+import { LocationManager } from './LocationManager';
 import { 
   Palette, 
   Bell, 
   Volume2, 
-  Download, 
   Trash2, 
   User, 
   Moon, 
   Sun,
   Timer,
-  Brain,
   Waves,
-  Shield,
-  HardDrive,
-  Lock,
-  Eye,
   Cloud,
-  Smartphone,
-  Database,
-  Wifi,
   MapPin
 } from 'lucide-react';
-import { LocalDataManager } from '../utils/LocalDataManager';
-import { DataManager, SyncMode, UserSettings } from '../utils/DataManager';
+import { DataManager, UserSettings } from '../utils/DataManager';
 
 interface SettingsProps {
   user: string;
@@ -44,10 +31,17 @@ interface SettingsProps {
 }
 
 export function Settings({ user, onLogout, onClearData }: SettingsProps) {
-  const [showPrivacyPanel, setShowPrivacyPanel] = useState(false);
-  const [preferences, setPreferences] = useState(() => LocalDataManager.loadPreferences());
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
-  const [isChangingSyncMode, setIsChangingSyncMode] = useState(false);
+  const [localPreferences, setLocalPreferences] = useState({
+    theme: 'ocean',
+    darkMode: false,
+    notifications: true,
+    focusReminders: true,
+    meditationReminders: true,
+    focusDuration: 25,
+    breakDuration: 5,
+    soundVolume: 50
+  });
   const [connectionStatus, setConnectionStatus] = useState(false);
   
   const dataManager = DataManager.getInstance();
@@ -55,6 +49,7 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
   useEffect(() => {
     loadUserSettings();
     checkConnection();
+    loadLocalPreferences();
   }, []);
 
   const loadUserSettings = async () => {
@@ -66,15 +61,30 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
     }
   };
 
+  const loadLocalPreferences = () => {
+    // Load from localStorage for UI preferences only
+    const stored = localStorage.getItem('aquarium_ui_preferences');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setLocalPreferences(prev => ({ ...prev, ...parsed }));
+      } catch (error) {
+        console.error('Failed to parse local preferences:', error);
+      }
+    }
+  };
+
+  const saveLocalPreference = (key: string, value: any) => {
+    const updated = { ...localPreferences, [key]: value };
+    setLocalPreferences(updated);
+    
+    // Save to localStorage for UI preferences
+    localStorage.setItem('aquarium_ui_preferences', JSON.stringify(updated));
+  };
+
   const checkConnection = async () => {
     const connected = await dataManager.testCloudConnection();
     setConnectionStatus(connected);
-  };
-
-  const updatePreference = (key: string, value: any) => {
-    const updated = { ...preferences, [key]: value };
-    setPreferences(updated);
-    LocalDataManager.savePreferences({ [key]: value });
   };
 
   const updateUserSettings = async (updates: Partial<UserSettings>) => {
@@ -83,58 +93,7 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
       setUserSettings(prev => prev ? { ...prev, ...updates } : null);
     } catch (error) {
       console.error('Failed to update user settings:', error);
-    }
-  };
-
-  const handleSyncModeChange = async (newMode: SyncMode) => {
-    if (isChangingSyncMode) return;
-    
-    setIsChangingSyncMode(true);
-    
-    try {
-      if (newMode === 'cloud-sync') {
-        const confirmed = confirm(
-          '🌊 Enable Cloud Sync?\n\n' +
-          'This will:\n' +
-          '• Upload your local data to secure cloud storage\n' +
-          '• Enable real-time sync across devices\n' +
-          '• Allow backup and restore features\n\n' +
-          'Your data will be encrypted and secure.\n\n' +
-          'Continue?'
-        );
-        
-        if (!confirmed) {
-          setIsChangingSyncMode(false);
-          return;
-        }
-      } else {
-        const confirmed = confirm(
-          '📱 Switch to Local Only?\n\n' +
-          'This will:\n' +
-          '• Download your cloud data locally\n' +
-          '• Disable cloud sync and real-time updates\n' +
-          '• Keep all data on this device only\n\n' +
-          'You can re-enable cloud sync anytime.\n\n' +
-          'Continue?'
-        );
-        
-        if (!confirmed) {
-          setIsChangingSyncMode(false);
-          return;
-        }
-      }
-      
-      await dataManager.setSyncMode(newMode);
-      await updateUserSettings({ syncMode: newMode });
-      
-      // Refresh connection status
-      setTimeout(checkConnection, 1000);
-      
-    } catch (error) {
-      console.error('Failed to change sync mode:', error);
-      alert('Failed to change sync mode. Please try again.');
-    } finally {
-      setIsChangingSyncMode(false);
+      alert('❌ Failed to save settings. Please check your internet connection and try again.');
     }
   };
 
@@ -145,48 +104,38 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
     { id: 'arctic', name: 'Arctic Waters', description: 'Cool cyan and white' },
   ];
 
-  const dataSummary = LocalDataManager.getDataSummary();
-
   return (
     <div className="space-y-6 pb-20 md:pb-6">
-      {/* Header with Privacy Status */}
-      <Card className="backdrop-blur-sm border-2 border-green-200 bg-green-50/50 shadow-lg">
+      {/* Header with Cloud Status */}
+      <Card className="backdrop-blur-sm border-2 border-blue-200 bg-blue-50/50 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-green-600" />
-            Settings & Privacy
-            <Badge variant="outline" className="ml-auto text-green-700 border-green-300">
-              {userSettings?.syncMode === 'local-only' ? '🔒 Local Only' : '☁️ Cloud Sync'}
+            <Cloud className="h-5 w-5 text-blue-600" />
+            Settings & Cloud Sync
+            <Badge variant="outline" className="ml-auto text-blue-700 border-blue-300">
+              {connectionStatus ? '☁️ Connected' : '⚠️ Offline'}
             </Badge>
           </CardTitle>
-          <p className="text-sm text-green-700">
-            All your data stays on your device. No cloud sync, no telemetry, no external tracking.
+          <p className="text-sm text-blue-700">
+            All your data is securely stored in the cloud and synced across devices.
           </p>
         </CardHeader>
       </Card>
 
       {/* Main Settings Tabs */}
       <Tabs defaultValue="general" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 bg-white/50 backdrop-blur-sm">
+        <TabsList className="grid w-full grid-cols-3 bg-white/50 backdrop-blur-sm">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             General
           </TabsTrigger>
-          <TabsTrigger value="sync" className="flex items-center gap-2">
+          <TabsTrigger value="cloud" className="flex items-center gap-2">
             <Cloud className="h-4 w-4" />
-            Sync
+            Cloud
           </TabsTrigger>
-          <TabsTrigger value="privacy" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Privacy
-          </TabsTrigger>
-          <TabsTrigger value="data" className="flex items-center gap-2">
-            <HardDrive className="h-4 w-4" />
-            Data
-          </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center gap-2">
-            <Lock className="h-4 w-4" />
-            Security
+          <TabsTrigger value="account" className="flex items-center gap-2">
+            <Trash2 className="h-4 w-4" />
+            Account
           </TabsTrigger>
         </TabsList>
 
@@ -209,8 +158,8 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
                   <p className="text-sm text-muted-foreground">{user}</p>
                   <div className="flex gap-2 mt-2">
                     <Badge variant="outline">Ocean Explorer</Badge>
-                    <Badge variant="outline" className="text-green-700 border-green-300">
-                      {dataSummary.tasks} Tasks
+                    <Badge variant="outline" className="text-blue-700 border-blue-300">
+                      Cloud User
                     </Badge>
                   </div>
                 </div>
@@ -245,8 +194,8 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
                 <div className="flex items-center gap-2">
                   <Sun className="h-4 w-4 text-yellow-500" />
                   <Switch 
-                    checked={preferences.darkMode} 
-                    onCheckedChange={(value) => updatePreference('darkMode', value)}
+                    checked={localPreferences.darkMode} 
+                    onCheckedChange={(value) => saveLocalPreference('darkMode', value)}
                   />
                   <Moon className="h-4 w-4 text-blue-500" />
                 </div>
@@ -262,12 +211,12 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
                       whileTap={{ scale: 0.98 }}
                       className={`
                         p-3 rounded-xl border-2 cursor-pointer transition-all
-                        ${preferences.theme === themeOption.id 
+                        ${localPreferences.theme === themeOption.id 
                           ? 'border-blue-400 bg-blue-50/50' 
                           : 'border-white/30 bg-white/20 hover:bg-white/30'
                         }
                       `}
-                      onClick={() => updatePreference('theme', themeOption.id)}
+                      onClick={() => saveLocalPreference('theme', themeOption.id)}
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -291,29 +240,18 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
                 Notifications
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                All notifications are processed locally and never shared externally.
+                Notification preferences are stored locally on this device.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Push Notifications</h4>
-                  <p className="text-sm text-muted-foreground">General app notifications</p>
-                </div>
-                <Switch 
-                  checked={preferences.notifications} 
-                  onCheckedChange={(value) => updatePreference('notifications', value)}
-                />
-              </div>
-
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium">Focus Reminders</h4>
                   <p className="text-sm text-muted-foreground">Gentle nudges to start focus sessions</p>
                 </div>
                 <Switch 
-                  checked={preferences.focusReminders} 
-                  onCheckedChange={(value) => updatePreference('focusReminders', value)}
+                  checked={localPreferences.focusReminders} 
+                  onCheckedChange={(value) => saveLocalPreference('focusReminders', value)}
                 />
               </div>
 
@@ -323,8 +261,8 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
                   <p className="text-sm text-muted-foreground">Daily mindfulness prompts</p>
                 </div>
                 <Switch 
-                  checked={preferences.meditationReminders} 
-                  onCheckedChange={(value) => updatePreference('meditationReminders', value)}
+                  checked={localPreferences.meditationReminders} 
+                  onCheckedChange={(value) => saveLocalPreference('meditationReminders', value)}
                 />
               </div>
             </CardContent>
@@ -342,11 +280,11 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">Focus Duration</h4>
-                  <span className="text-sm text-blue-600">{preferences.focusDuration} minutes</span>
+                  <span className="text-sm text-blue-600">{localPreferences.focusDuration} minutes</span>
                 </div>
                 <Select 
-                  value={preferences.focusDuration.toString()} 
-                  onValueChange={(value) => updatePreference('focusDuration', Number(value))}
+                  value={localPreferences.focusDuration.toString()} 
+                  onValueChange={(value) => saveLocalPreference('focusDuration', Number(value))}
                 >
                   <SelectTrigger className="bg-white/50 border-white/30 rounded-xl">
                     <SelectValue />
@@ -364,11 +302,11 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">Break Duration</h4>
-                  <span className="text-sm text-blue-600">{preferences.breakDuration} minutes</span>
+                  <span className="text-sm text-blue-600">{localPreferences.breakDuration} minutes</span>
                 </div>
                 <Select 
-                  value={preferences.breakDuration.toString()} 
-                  onValueChange={(value) => updatePreference('breakDuration', Number(value))}
+                  value={localPreferences.breakDuration.toString()} 
+                  onValueChange={(value) => saveLocalPreference('breakDuration', Number(value))}
                 >
                   <SelectTrigger className="bg-white/50 border-white/30 rounded-xl">
                     <SelectValue />
@@ -396,13 +334,13 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">Ocean Sounds Volume</h4>
-                  <span className="text-sm text-blue-600">{preferences.soundVolume}%</span>
+                  <span className="text-sm text-blue-600">{localPreferences.soundVolume}%</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Volume2 className="h-4 w-4 text-blue-500" />
                   <Slider
-                    value={[preferences.soundVolume]}
-                    onValueChange={(value) => updatePreference('soundVolume', value[0])}
+                    value={[localPreferences.soundVolume]}
+                    onValueChange={(value) => saveLocalPreference('soundVolume', value[0])}
                     max={100}
                     step={5}
                     className="flex-1"
@@ -413,367 +351,89 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="privacy" className="space-y-6">
-          {/* Local-Only Mode */}
-          <Card className="backdrop-blur-sm border-2 border-green-200 bg-green-50/50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-800">
-                <Shield className="h-5 w-5" />
-                Local-Only Mode
-                <Badge variant="outline" className="ml-auto text-green-700 border-green-300">
-                  {preferences.localOnlyMode ? 'ACTIVE' : 'DISABLED'}
-                </Badge>
-              </CardTitle>
-              <p className="text-sm text-green-700">
-                When enabled, no data leaves your device. No cloud sync, no telemetry, no external connections.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-green-800">Enable Local-Only Mode</h4>
-                  <p className="text-sm text-green-600">
-                    Prevents all external data transmission and keeps everything on your device
-                  </p>
-                </div>
-                <Switch 
-                  checked={preferences.localOnlyMode} 
-                  onCheckedChange={(value) => updatePreference('localOnlyMode', value)}
-                />
-              </div>
-              
-              {preferences.localOnlyMode && (
-                <div className="p-4 bg-green-100 rounded-xl">
-                  <h5 className="font-medium text-green-800 mb-2">Local-Only Mode Active</h5>
-                  <ul className="text-sm text-green-700 space-y-1">
-                    <li>✓ All data stored locally on your device</li>
-                    <li>✓ No cloud synchronization</li>
-                    <li>✓ No usage analytics or telemetry</li>
-                    <li>✓ Manual export/import only</li>
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Privacy Overview */}
-          <Card className="backdrop-blur-sm border-2 border-white/20 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-5 w-5 text-blue-500" />
-                  Privacy Overview
-                </div>
-                <Button
-                  onClick={() => setShowPrivacyPanel(true)}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Eye className="h-4 w-4" />
-                  View Details
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-green-50 rounded-xl">
-                  <div className="text-lg font-bold text-green-600">{dataSummary.tasks}</div>
-                  <div className="text-sm text-green-700">Local Tasks</div>
-                </div>
-                <div className="text-center p-3 bg-blue-50 rounded-xl">
-                  <div className="text-lg font-bold text-blue-600">{dataSummary.storageSize}</div>
-                  <div className="text-sm text-blue-700">Storage Used</div>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <h5 className="font-medium">Data Status:</h5>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>Local Storage</span>
-                    <Badge variant="outline" className="text-green-700 border-green-300">Active</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Cloud Sync</span>
-                    <Badge variant="outline" className="text-gray-500 border-gray-300">Disabled</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Analytics</span>
-                    <Badge variant="outline" className="text-gray-500 border-gray-300">None</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Third-party Tracking</span>
-                    <Badge variant="outline" className="text-gray-500 border-gray-300">Blocked</Badge>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sync" className="space-y-6">
-          {/* Sync Mode Settings */}
+        <TabsContent value="cloud" className="space-y-6">
+          {/* Connection Status */}
           <Card className="backdrop-blur-sm border-2 border-white/20 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Cloud className="h-5 w-5 text-blue-500" />
-                Data Synchronization
-              </CardTitle>
-              <p className="text-sm text-blue-600">
-                Choose how your data is stored and synchronized across devices.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Current Sync Mode */}
-              <div className="p-4 rounded-2xl glass-morandi border border-white/30">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium">Current Mode</h4>
-                  <Badge 
-                    variant="outline" 
-                    className={
-                      userSettings?.syncMode === 'cloud-sync' 
-                        ? 'text-blue-700 border-blue-300' 
-                        : 'text-green-700 border-green-300'
-                    }
-                  >
-                    {userSettings?.syncMode === 'cloud-sync' ? (
-                      <>
-                        <Cloud className="h-3 w-3 mr-1" />
-                        Cloud Sync
-                      </>
-                    ) : (
-                      <>
-                        <Smartphone className="h-3 w-3 mr-1" />
-                        Local Only
-                      </>
-                    )}
-                  </Badge>
-                </div>
-                <p className="text-sm text-blue-600/80">
-                  {userSettings?.syncMode === 'cloud-sync' 
-                    ? 'Your data is synchronized with secure cloud storage and available across devices.'
-                    : 'All your data stays on this device only. No cloud sync or external storage.'
-                  }
-                </p>
-              </div>
-
-              {/* Sync Mode Toggle */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full glass-morandi">
-                      <Smartphone className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Local Only Mode</h4>
-                      <p className="text-sm text-blue-600/80">All data stays on your device</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant={userSettings?.syncMode === 'local-only' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleSyncModeChange('local-only')}
-                    disabled={isChangingSyncMode}
-                    className="rounded-xl"
-                  >
-                    {userSettings?.syncMode === 'local-only' ? 'Active' : 'Switch'}
-                  </Button>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full glass-morandi">
-                      <Cloud className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Cloud Sync Mode</h4>
-                      <p className="text-sm text-blue-600/80">Sync across devices with encrypted storage</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant={userSettings?.syncMode === 'cloud-sync' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleSyncModeChange('cloud-sync')}
-                    disabled={isChangingSyncMode}
-                    className="rounded-xl"
-                  >
-                    {isChangingSyncMode ? 'Switching...' : userSettings?.syncMode === 'cloud-sync' ? 'Active' : 'Enable'}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Connection Status */}
-              {userSettings?.syncMode === 'cloud-sync' && (
-                <div className="p-4 rounded-2xl glass-morandi border border-white/30">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium">Connection Status</h4>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${connectionStatus ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                      <span className={`text-sm ${connectionStatus ? 'text-green-600' : 'text-red-600'}`}>
-                        {connectionStatus ? 'Connected' : 'Disconnected'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2 text-sm text-blue-600/80">
-                    <div className="flex items-center justify-between">
-                      <span>Network Status:</span>
-                      <div className="flex items-center gap-1">
-                        {navigator.onLine ? (
-                          <>
-                            <Wifi className="h-3 w-3 text-green-600" />
-                            <span className="text-green-600">Online</span>
-                          </>
-                        ) : (
-                          <>
-                            <Wifi className="h-3 w-3 text-red-600" />
-                            <span className="text-red-600">Offline</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Database:</span>
-                      <div className="flex items-center gap-1">
-                        <Database className="h-3 w-3" />
-                        <span>{connectionStatus ? 'Connected' : 'Error'}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="pt-3 border-t border-white/20 mt-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={checkConnection}
-                      className="w-full rounded-xl"
-                    >
-                      Test Connection
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Location Settings */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-blue-500" />
-                  <h4 className="font-medium">Location for Weather</h4>
-                </div>
-                <Input
-                  placeholder="Enter city name (optional)"
-                  value={userSettings?.location || ''}
-                  onChange={(e) => updateUserSettings({ location: e.target.value })}
-                  className="glass-morandi border-white/30 focus:border-blue-400 rounded-xl"
-                />
-                <p className="text-xs text-blue-600/80">
-                  Leave empty to use your device's location automatically
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Sync Features */}
-          <Card className="backdrop-blur-sm border-2 border-white/20 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5 text-purple-500" />
-                Sync Features
+                Cloud Connection
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3 rounded-xl glass-morandi border border-white/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                    <span className="font-medium text-sm">Tasks & Notes</span>
-                  </div>
-                  <p className="text-xs text-blue-600/80">
-                    All your tasks, notes, and priorities
-                  </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Status</h4>
+                  <p className="text-sm text-muted-foreground">Current connection to cloud services</p>
                 </div>
-                
-                <div className="p-3 rounded-xl glass-morandi border border-white/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full" />
-                    <span className="font-medium text-sm">Meditation History</span>
-                  </div>
-                  <p className="text-xs text-blue-600/80">
-                    Session duration and completion stats
-                  </p>
-                </div>
-                
-                <div className="p-3 rounded-xl glass-morandi border border-white/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full" />
-                    <span className="font-medium text-sm">App Preferences</span>
-                  </div>
-                  <p className="text-xs text-blue-600/80">
-                    Themes, settings, and customizations
-                  </p>
-                </div>
-                
-                <div className="p-3 rounded-xl glass-morandi border border-white/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full" />
-                    <span className="font-medium text-sm">Focus Sessions</span>
-                  </div>
-                  <p className="text-xs text-blue-600/80">
-                    Pomodoro history and productivity stats
-                  </p>
-                </div>
+                <Badge variant="outline" className={connectionStatus ? 'text-green-700 border-green-300' : 'text-red-700 border-red-300'}>
+                  {connectionStatus ? 'Connected' : 'Disconnected'}
+                </Badge>
               </div>
               
-              <div className="pt-3 border-t border-white/20">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-blue-600/80">End-to-end encryption:</span>
-                  <Badge variant="outline" className="text-green-700 border-green-300">
-                    ✓ Enabled
-                  </Badge>
-                </div>
-              </div>
+              <Button 
+                onClick={checkConnection}
+                variant="outline"
+                className="w-full rounded-xl"
+              >
+                Test Connection
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Location Management */}
+          <Card className="backdrop-blur-sm border-2 border-white/20 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-blue-500" />
+                Location & Weather Settings
+              </CardTitle>
+              <p className="text-sm text-blue-600/80">
+                Configure your location for personalized weather display and activity recommendations
+              </p>
+            </CardHeader>
+            <CardContent>
+              <LocationManager
+                currentLocation={userSettings?.location || null}
+                onLocationChange={async (location) => {
+                  await updateUserSettings({ location });
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="data" className="space-y-6">
-          <LocalDataVault onDataChange={() => {/* Force refresh if needed */}} />
-        </TabsContent>
-
-        <TabsContent value="security" className="space-y-6">
-          <SecuritySettings onSecurityChange={() => {/* Handle security changes */}} />
+        <TabsContent value="account" className="space-y-6">
+          {/* Dangerous Actions */}
+          <Card className="backdrop-blur-sm border-2 border-red-200 bg-red-50/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-700">
+                <Trash2 className="h-5 w-5" />
+                Danger Zone
+              </CardTitle>
+              <p className="text-sm text-red-600">
+                Irreversible actions that permanently delete your cloud data.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <h4 className="font-medium text-red-800">Clear All Cloud Data</h4>
+                <p className="text-sm text-red-600">
+                  This will permanently delete all your tasks, settings, and progress from the cloud. This action cannot be undone.
+                </p>
+                <Button 
+                  onClick={onClearData}
+                  variant="destructive"
+                  className="w-full rounded-xl"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Permanently Delete All Cloud Data
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Dangerous Actions */}
-      <Card className="backdrop-blur-sm border-2 border-red-200 bg-red-50/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-700">
-            <Trash2 className="h-5 w-5" />
-            Danger Zone
-          </CardTitle>
-          <p className="text-sm text-red-600">
-            Irreversible actions that permanently delete your local data.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <h4 className="font-medium text-red-800">Clear All Local Data</h4>
-            <p className="text-sm text-red-600">
-              This will permanently delete all your tasks, settings, and progress from this device. This action cannot be undone.
-            </p>
-            <Button 
-              onClick={onClearData}
-              variant="destructive"
-              className="w-full rounded-xl"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Permanently Delete All Data
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* App Info */}
       <Card className="backdrop-blur-sm border-2 border-white/20 shadow-lg">
@@ -782,26 +442,20 @@ export function Settings({ user, onLogout, onClearData }: SettingsProps) {
             <span className="text-xl">🌊</span>
           </div>
           <h3 className="font-medium">Aquarium Serenity</h3>
-          <p className="text-sm text-muted-foreground">Version 1.0.0 • Privacy-First</p>
+          <p className="text-sm text-muted-foreground">Version 2.0.0 • Cloud-First</p>
           <p className="text-xs text-blue-600">
-            Peaceful productivity in your private digital ocean
+            Peaceful productivity with seamless cloud sync
           </p>
           <div className="flex justify-center gap-2 pt-2">
-            <Badge variant="outline" className="text-green-700 border-green-300 text-xs">
-              Local-Only
-            </Badge>
             <Badge variant="outline" className="text-blue-700 border-blue-300 text-xs">
-              No Tracking
+              Cloud Sync
+            </Badge>
+            <Badge variant="outline" className="text-green-700 border-green-300 text-xs">
+              Real-time
             </Badge>
           </div>
         </CardContent>
       </Card>
-
-      {/* Privacy Panel */}
-      <PrivacyPanel 
-        isOpen={showPrivacyPanel} 
-        onClose={() => setShowPrivacyPanel(false)} 
-      />
     </div>
   );
 }
