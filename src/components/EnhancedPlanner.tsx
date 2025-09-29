@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+
 import { 
   Calendar, 
   Clock, 
@@ -254,9 +255,7 @@ export function EnhancedPlanner({ tasks, onCompleteTask, onChangePriority }: Enh
             </CardHeader>
             <CardContent>
               {todaysTasks.length === 0 ? (
-                <div className="text-center py-12 space-y-3">
-                  <div className="text-4xl">🌊</div>
-                  <h3 className="font-medium text-blue-700">Peaceful Waters</h3>
+                <div className="text-center py-12 space-y-4">
                   <p className="text-blue-600">No scheduled tasks for today. Perfect time to relax!</p>
                 </div>
               ) : (

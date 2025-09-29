@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { DataManager } from '../utils/DataManager';
+import aquariumLogo from 'figma:asset/2fc08412acabe9b8a61790ab3bc5224024cff33a.png';
 
 export type NavigationScreen = 'dashboard' | 'planner' | 'focus' | 'meditation' | 'settings';
 
@@ -105,7 +106,7 @@ export function Navigation({ currentScreen, onScreenChange, onLogout, user, task
             className="flex items-center gap-3"
           >
             <motion.div 
-              className="w-10 h-10 bubble-semi-transparent rounded-full flex items-center justify-center float-3d"
+              className="w-10 h-10 rounded-full flex items-center justify-center float-3d overflow-hidden"
               animate={{ 
                 scale: [1, 1.05, 1]
               }}
@@ -113,7 +114,11 @@ export function Navigation({ currentScreen, onScreenChange, onLogout, user, task
                 scale: { duration: 3, repeat: Infinity, ease: "easeInOut" }
               }}
             >
-              <span className="text-lg">🌊</span>
+              <img 
+                src={aquariumLogo} 
+                alt="Aquarium Serenity" 
+                className="w-full h-full object-cover"
+              />
             </motion.div>
             <div>
               <h1 className="text-xl font-medium text-blue-800">Aquarium Serenity</h1>
@@ -175,8 +180,12 @@ export function Navigation({ currentScreen, onScreenChange, onLogout, user, task
       <nav className="md:hidden relative z-20 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-cyan-300 rounded-full flex items-center justify-center">
-              <span className="text-sm">🌊</span>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden">
+              <img 
+                src={aquariumLogo} 
+                alt="Aquarium Serenity" 
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <h1 className="font-medium text-blue-800">Aquarium Serenity</h1>

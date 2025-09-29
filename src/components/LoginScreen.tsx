@@ -26,22 +26,39 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     try {
       if (isSignUp) {
         // Sign up new user
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
         
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('User already registered')) {
+            setError('An account with this email already exists. Please try signing in instead.');
+            setIsSignUp(false);
+            setIsLoading(false);
+            return;
+          }
+          throw error;
+        }
         
-        // Auto sign in after signup
+        console.log('Sign up successful:', data);
+        
+        // Auto sign in after signup (since email confirmation is disabled)
         const { data: { session }, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
-        if (signInError) throw signInError;
+        if (signInError) {
+          console.error('Auto sign-in after signup failed:', signInError);
+          setError('Account created successfully! Please try signing in now.');
+          setIsSignUp(false);
+          setIsLoading(false);
+          return;
+        }
         
         if (session?.user) {
+          console.log('Login successful after signup:', session.user.email);
           onLogin(session.user.email!);
         }
       } else {
@@ -51,15 +68,39 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           password,
         });
         
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            setError('Invalid email or password. Please check your credentials and try again, or create a new account if you don\'t have one yet.');
+          } else if (error.message.includes('Email not confirmed')) {
+            setError('Please check your email and confirm your account before signing in.');
+          } else {
+            setError(`Sign in failed: ${error.message}`);
+          }
+          setIsLoading(false);
+          return;
+        }
         
         if (session?.user) {
+          console.log('Login successful:', session.user.email);
           onLogin(session.user.email!);
+        } else {
+          setError('Login failed: No session created. Please try again.');
+          setIsLoading(false);
         }
       }
     } catch (error: any) {
       console.error('Authentication error:', error);
-      setError(error.message || 'Authentication failed');
+      const errorMessage = error.message || 'Authentication failed';
+      
+      if (errorMessage.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please check your credentials or try creating a new account.');
+      } else if (errorMessage.includes('Email not confirmed')) {
+        setError('Please confirm your email address before signing in.');
+      } else if (errorMessage.includes('Password should be at least')) {
+        setError('Password must be at least 6 characters long.');
+      } else {
+        setError(`Authentication failed: ${errorMessage}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -154,6 +195,14 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               </div>
             </form>
           </CardContent>
+          
+          {/* Helper info */}
+          <div className="px-6 pb-6">
+            <div className="text-xs text-blue-600/70 text-center space-y-1 border-t border-blue-200 pt-3">
+              <p>💡 Tip: Create a new account with any email and password (6+ characters)</p>
+              <p>Email confirmation is disabled for easy testing</p>
+            </div>
+          </div>
         </Card>
       </motion.div>
     </div>

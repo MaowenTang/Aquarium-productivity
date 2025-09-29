@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { BubbleVisualization } from './BubbleVisualization';
-import { DailyPlanner } from './DailyPlanner';
 import { WeatherDisplay } from './WeatherDisplay';
 import { MeditationModule } from './MeditationModule';
 import { Task } from '../types/Task';
@@ -242,42 +241,32 @@ export function Dashboard({
         </motion.div>
       )}
 
-      {/* Mindfulness Reminder */}
+      {/* Quick Actions for Empty State */}
       {activeTasks.length === 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
         >
-          <Card className="glass-card-light text-center">
-            <CardContent className="py-8 space-y-4">
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.1, 1],
-                  rotate: [0, 5, 0]
-                }}
-                transition={{ 
-                  duration: 3, 
-                  repeat: Infinity,
-                  ease: 'easeInOut'
-                }}
-                className="text-6xl"
-              >
-                🌊
-              </motion.div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-medium text-blue-700">Perfect Serenity</h3>
-                <p className="text-blue-600 max-w-md mx-auto">
-                  Your ocean is calm and peaceful. This is a perfect time for reflection and mindfulness.
-                </p>
+          <Card className="glass-card-light">
+            <CardContent className="py-6">
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+                <Button
+                  onClick={() => setShowMeditation(true)}
+                  className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-xl"
+                >
+                  <Brain className="h-4 w-4 mr-2" />
+                  Start Meditation
+                </Button>
+                <Button
+                  onClick={() => setShowPlanner(true)}
+                  variant="outline"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-50 rounded-xl"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Plan Your Day
+                </Button>
               </div>
-              <Button
-                onClick={() => setShowMeditation(true)}
-                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-xl"
-              >
-                <Brain className="h-4 w-4 mr-2" />
-                Start Meditation
-              </Button>
             </CardContent>
           </Card>
         </motion.div>
