@@ -401,7 +401,7 @@ aquarium-serenity/
 
 ## Contributing
 
-While this is a personal project, suggestions and feedback are welcome! Please:
+While this is CINS 5318 Software Engineering course project, suggestions and feedback are welcome! Please:
 1. Check existing issues first
 2. Provide clear reproduction steps for bugs
 3. Suggest features with use cases
