@@ -1,6 +1,6 @@
 # Aquarium Serenity
 
-> A beautiful cross-platform productivity application that combines task management with mindfulness, featuring a serene ocean theme and innovative bubble-based task visualization.
+> A cross-platform productivity application that combines task management with mindfulness, featuring a serene ocean theme and innovative bubble-based task visualization.
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react)
